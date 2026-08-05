@@ -1,0 +1,24 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "token": "Integration token (optional)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach BetterDisplay's HTTP integration at that host/port. Make sure BetterDisplay is running and Settings > Application > Integration > \"Enable integrated HTTP server\" is on."
+    },
+    "abort": {
+      "already_configured": "This BetterDisplay instance is already configured."
+    }
+  },
+  "entity": {
+    "light": {
+      "brightness": { "name": "Brightness" }
+    }
+  }
+}

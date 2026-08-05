@@ -1,0 +1,10 @@
+{
+  "domain": "betterdisplay",
+  "name": "BetterDisplay",
+  "codeowners": ["@mzspicoli"],
+  "config_flow": true,
+  "documentation": "https://github.com/waydabber/BetterDisplay/wiki/Integration-features,-CLI",
+  "iot_class": "local_polling",
+  "requirements": [],
+  "version": "0.1.0"
+}
