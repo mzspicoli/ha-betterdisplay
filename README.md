@@ -1,7 +1,34 @@
-# BetterDisplay Home Assistant integration (proof of concept)
+# BetterDisplay Home Assistant integration
 
 Custom `custom_components/betterdisplay` for Home Assistant, exposing BetterDisplay
 display brightness as a `light` entity via BetterDisplay's HTTP integration API.
+
+## Requirements
+
+- A Mac running [BetterDisplay](https://betterdisplay.pro), reachable from Home
+  Assistant over the LAN.
+- In BetterDisplay: **Settings > Application > Integration > "Enable integrated
+  HTTP server"** (default port `55777`). Optionally set an integration token
+  there and enter it during setup.
+- Turning a display off uses BetterDisplay's `hardwareBacklight` command, which
+  needs a display with DDC (or smart protocol) backlight support. Displays
+  without it fall back to dimming to 0%.
+
+## Installation
+
+### HACS (custom repository)
+
+1. HACS > three-dot menu > **Custom repositories**.
+2. Repository `https://github.com/mzspicoli/ha-betterdisplay`, type
+   **Integration**, then **Add**.
+3. Find "BetterDisplay" in HACS, **Download**, then restart Home Assistant.
+4. **Settings > Devices & services > Add integration > BetterDisplay**, and enter
+   the Mac's IP and port.
+
+### Manual
+
+Copy `custom_components/betterdisplay/` into your Home Assistant `config/custom_components/`
+directory and restart, then add the integration from the UI as above.
 
 ## Why this instead of the original MQTT bridge idea
 
@@ -73,15 +100,18 @@ Against the user's real Mac (BetterDisplay installed, one physical monitor,
    brightness changed to `0.698` (70%) as expected.
 7. Restored the monitor to its original brightness (`0.934`) after each test.
 
-## Known gaps before this is publish-ready
+## Known gaps
 
-- Only brightness is exposed; contrast/volume/input could follow the same
-  pattern using BetterDisplay's `hardwareContrast`, `volume`, `changeInputSource`
-  parameters (probably as `number`/`select` entities).
+- Only brightness and backlight power are exposed; contrast/volume/input could
+  follow the same pattern using BetterDisplay's `hardwareContrast`, `volume`,
+  `changeInputSource` parameters (probably as `number`/`select` entities).
 - No token auth tested end-to-end (field exists in config flow, untested against
   BetterDisplay's optional `token=` safeguard).
-- No `DeviceInfo.sw_version`/`manufacturer` niceties, no diagnostics, no tests.
-- Not yet submitted anywhere -- this is a local proof of concept.
+- Only tested against one display (AOC CU34V5C) on one Mac. Reports from other
+  hardware are welcome in the issue tracker.
+- No `DeviceInfo.sw_version` niceties, no diagnostics, no tests.
+- Installable as a HACS custom repository; not submitted to the HACS default
+  list (that additionally needs a logo in `home-assistant/brands`).
 
 ## Files
 
