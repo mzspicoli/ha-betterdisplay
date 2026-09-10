@@ -1,14 +1,19 @@
 """Light platform for BetterDisplay -- exposes display brightness and backlight power."""
 from __future__ import annotations
 
+import logging
+
 from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_BRIGHTNESS_PCT, ColorMode, LightEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .api import BetterDisplayError
 from .const import DOMAIN
 from .coordinator import BetterDisplayCoordinator
 from .entity import BetterDisplayEntity
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
@@ -25,7 +30,10 @@ class BetterDisplayBrightnessLight(BetterDisplayEntity, LightEntity):
 
     @property
     def _has_backlight_control(self) -> bool:
-        return self._display["backlight"] is not None
+        return (
+            self._display["backlight"] is not None
+            and self._tag_id not in self.coordinator.backlight_unsupported
+        )
 
     @property
     def is_on(self) -> bool:
@@ -59,8 +67,31 @@ class BetterDisplayBrightnessLight(BetterDisplayEntity, LightEntity):
     async def async_turn_off(self, **kwargs) -> None:
         # Cut the backlight via DDC so the panel actually powers down; dropping brightness
         # to 0 only paints the screen black while the display stays lit.
-        if self._has_backlight_control:
-            await self.coordinator.client.set_backlight(self._tag_id, False)
-        else:
-            await self.coordinator.client.set_brightness(self._tag_id, 0.0)
+        client = self.coordinator.client
+        if self._has_backlight_control and await self._try_backlight_off():
+            await self.coordinator.async_request_refresh()
+            return
+
+        await client.set_brightness(self._tag_id, 0.0)
         await self.coordinator.async_request_refresh()
+
+    async def _try_backlight_off(self) -> bool:
+        """Turn the backlight off, reporting whether the display actually obeyed.
+
+        BetterDisplay answers 200 with an empty body for parameters a display doesn't
+        implement, so a successful write says nothing -- the value has to be read back.
+        Displays that ignore it are remembered so later calls skip straight to dimming.
+        """
+        client = self.coordinator.client
+        try:
+            await client.set_backlight(self._tag_id, False)
+            if not await client.get_backlight(self._tag_id):
+                return True
+        except BetterDisplayError as err:
+            _LOGGER.debug("Backlight control failed for %s: %s", self._tag_id, err)
+
+        _LOGGER.info(
+            "Display %s ignores hardwareBacklight; falling back to dimming to 0%%", self._tag_id
+        )
+        self.coordinator.backlight_unsupported.add(self._tag_id)
+        return False

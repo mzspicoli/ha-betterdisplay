@@ -86,8 +86,10 @@ One device per display, with up to four entities:
 - `light.turn_off` calls `GET /set?tagID=<id>&hardwareBacklight=off`, which cuts
   the panel's backlight over DDC so the monitor actually powers down. Setting
   brightness to 0 instead only renders a black screen on a still-lit display.
-  Displays that don't report a `hardwareBacklight` value (the API answers
-  `Failed.`) fall back to the old brightness-to-0 behaviour.
+  The value is read back afterwards, because BetterDisplay answers `200` with an
+  empty body for parameters a display doesn't actually implement -- a display
+  that reports a backlight state but ignores writes to it is remembered, and
+  falls back to dimming to 0% from then on.
 
 > [!WARNING]
 > Switching the input source points the monitor at another device, so the Mac's

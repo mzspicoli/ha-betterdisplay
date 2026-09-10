@@ -25,6 +25,8 @@ class BetterDisplayCoordinator(DataUpdateCoordinator[dict[str, dict]]):
         # The input source list is static per display, so it's fetched once and kept here
         # rather than re-read on every poll.
         self.input_sources: dict[str, dict[str, str]] = {}
+        # Displays that report a hardwareBacklight value but ignore writes to it.
+        self.backlight_unsupported: set[str] = set()
 
     async def _async_update_data(self) -> dict[str, dict]:
         try:
