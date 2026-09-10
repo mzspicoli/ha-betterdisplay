@@ -4,8 +4,8 @@
   "codeowners": ["@mzspicoli"],
   "config_flow": true,
   "documentation": "https://github.com/mzspicoli/ha-betterdisplay",
-  "issue_tracker": "https://github.com/mzspicoli/ha-betterdisplay/issues",
   "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/mzspicoli/ha-betterdisplay/issues",
   "requirements": [],
   "version": "0.2.0"
 }
