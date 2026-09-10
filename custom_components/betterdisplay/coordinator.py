@@ -22,6 +22,9 @@ class BetterDisplayCoordinator(DataUpdateCoordinator[dict[str, dict]]):
             update_interval=timedelta(seconds=UPDATE_INTERVAL_SECONDS),
         )
         self.client = client
+        # The input source list is static per display, so it's fetched once and kept here
+        # rather than re-read on every poll.
+        self.input_sources: dict[str, dict[str, str]] = {}
 
     async def _async_update_data(self) -> dict[str, dict]:
         try:
@@ -29,9 +32,15 @@ class BetterDisplayCoordinator(DataUpdateCoordinator[dict[str, dict]]):
             result = {}
             for display in displays:
                 tag_id = display["tagID"]
-                brightness = await self.client.get_brightness(tag_id)
-                backlight = await self.client.get_backlight(tag_id)
-                result[tag_id] = {**display, "brightness": brightness, "backlight": backlight}
+                if tag_id not in self.input_sources:
+                    self.input_sources[tag_id] = await self.client.list_input_sources(tag_id)
+                result[tag_id] = {
+                    **display,
+                    "brightness": await self.client.get_brightness(tag_id),
+                    "backlight": await self.client.get_backlight(tag_id),
+                    "volume": await self.client.get_volume(tag_id),
+                    "mute": await self.client.get_mute(tag_id),
+                }
             return result
         except BetterDisplayError as err:
             raise UpdateFailed(str(err)) from err

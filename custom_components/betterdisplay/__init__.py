@@ -10,7 +10,7 @@ from .api import BetterDisplayClient
 from .const import CONF_TOKEN, DOMAIN
 from .coordinator import BetterDisplayCoordinator
 
-PLATFORMS = [Platform.LIGHT]
+PLATFORMS = [Platform.LIGHT, Platform.NUMBER, Platform.SELECT, Platform.SWITCH]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

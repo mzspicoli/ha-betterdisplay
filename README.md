@@ -1,15 +1,39 @@
 # BetterDisplay Home Assistant integration
 
-Custom `custom_components/betterdisplay` for Home Assistant, exposing BetterDisplay
-display brightness as a `light` entity via BetterDisplay's HTTP integration API.
+Custom `custom_components/betterdisplay` for Home Assistant, controlling display
+brightness, power, volume, mute and input source via BetterDisplay's HTTP
+integration API.
 
 ## Requirements
 
-- A Mac running [BetterDisplay](https://betterdisplay.pro), reachable from Home
-  Assistant over the LAN.
-- In BetterDisplay: **Settings > Application > Integration > "Enable integrated
-  HTTP server"** (default port `55777`). Optionally set an integration token
-  there and enter it during setup.
+### What to enable in BetterDisplay
+
+The HTTP server is **off by default** -- only CLI and notification integration
+are enabled out of the box, so this step is required.
+
+1. Open BetterDisplay > **Settings** (gear icon) > **Application** > **Integration**.
+2. Under **HTTP integration**, turn on **"Enable integrated HTTP server"**
+   ("Allows access to app functionality via HTTP requests").
+3. **"Listening HTTP port"** sets the TCP port; the default is `55777`. Use the
+   same value in the Home Assistant config flow.
+4. Optionally set the integration token in that same pane. If you do, enter it
+   during setup -- it is sent as the `token=` query parameter.
+
+The server binds to all interfaces, so Home Assistant reaches it over the LAN
+with no extra tunnel or broker. macOS may ask to allow incoming connections the
+first time -- accept it.
+
+Note that the HTTP interface itself, DDC brightness, DDC volume, DDC power and
+DDC input switching are all **free** features of BetterDisplay -- a Pro license
+is not required for anything this integration does. See
+[List of free and Pro features](https://github.com/waydabber/BetterDisplay/wiki/List-of-free-and-Pro-features).
+
+### On the Home Assistant side
+
+- The Mac must be reachable from Home Assistant over the LAN.
+- Which entities appear depends on what the display reports over DDC. Volume and
+  mute entities are only created for displays with hardware volume control, and
+  the input source picker only for displays that expose an input source list.
 - Turning a display off uses BetterDisplay's `hardwareBacklight` command, which
   needs a display with DDC (or smart protocol) backlight support. Displays
   without it fall back to dimming to 0%.
@@ -46,18 +70,33 @@ plain HTTP -- no MQTT broker needed at all.
 
 ## What it does
 
-- `light.<display>` entity per connected display, brightness-only (`ColorMode.BRIGHTNESS`).
+One device per display, with up to four entities:
+
+| Entity | BetterDisplay parameter | Notes |
+| --- | --- | --- |
+| `light.<display>` | `brightness`, `hardwareBacklight` | Brightness-only color mode. |
+| `number.<display>_volume` | `volume` | 0-100%, only for displays with DDC volume. |
+| `switch.<display>_mute` | `mute` | Only for displays with DDC volume. |
+| `select.<display>_input_source` | `inputSourceList`, `changeInputSource` | Write-only, see below. |
+
 - Config flow: host, port (default 55777), optional integration token.
-- `DataUpdateCoordinator` polls `GET /get?identifiers` (display list),
-  `GET /get?tagID=<id>&brightness` and `GET /get?tagID=<id>&hardwareBacklight`
-  every 10s.
-- `light.turn_on` (with `brightness` or `brightness_pct`) calls
-  `GET /set?tagID=<id>&brightness=<0-1>`.
+- `DataUpdateCoordinator` polls `GET /get?identifiers` (display list) plus
+  `brightness`, `hardwareBacklight`, `volume` and `mute` per display every 10s.
+  The input source list is static, so it is read once per display.
 - `light.turn_off` calls `GET /set?tagID=<id>&hardwareBacklight=off`, which cuts
   the panel's backlight over DDC so the monitor actually powers down. Setting
   brightness to 0 instead only renders a black screen on a still-lit display.
   Displays that don't report a `hardwareBacklight` value (the API answers
   `Failed.`) fall back to the old brightness-to-0 behaviour.
+
+> [!WARNING]
+> Switching the input source points the monitor at another device, so the Mac's
+> picture disappears until something switches it back. DDC input source is
+> write-only in practice (reading VCP `0x60` back fails on most Apple Silicon
+> connections), so the `select` entity reports the last value *it* sent and stays
+> `unknown` until then -- it cannot detect input changes made with the monitor's
+> own buttons. The option list comes straight from BetterDisplay and covers every
+> input DDC can address, not just the ports your monitor physically has.
 
 ## Bugs found and fixed during testing against real hardware
 
@@ -102,11 +141,12 @@ Against the user's real Mac (BetterDisplay installed, one physical monitor,
 
 ## Known gaps
 
-- Only brightness and backlight power are exposed; contrast/volume/input could
-  follow the same pattern using BetterDisplay's `hardwareContrast`, `volume`,
-  `changeInputSource` parameters (probably as `number`/`select` entities).
+- Contrast (`hardwareContrast`) and the per-channel gain/black level parameters
+  aren't exposed yet; they'd follow the same pattern as volume.
 - No token auth tested end-to-end (field exists in config flow, untested against
   BetterDisplay's optional `token=` safeguard).
+- Input source switching is implemented from the documented API but not verified
+  against real hardware -- testing it means losing the picture on the test Mac.
 - Only tested against one display (AOC CU34V5C) on one Mac. Reports from other
   hardware are welcome in the issue tracker.
 - No `DeviceInfo.sw_version` niceties, no diagnostics, no tests.
@@ -116,4 +156,5 @@ Against the user's real Mac (BetterDisplay installed, one physical monitor,
 ## Files
 
 `custom_components/betterdisplay/`: `__init__.py`, `api.py`, `config_flow.py`,
-`const.py`, `coordinator.py`, `light.py`, `manifest.json`, `strings.json`.
+`const.py`, `coordinator.py`, `entity.py`, `light.py`, `number.py`, `select.py`,
+`switch.py`, `manifest.json`, `strings.json`, `translations/`, `brand/`.

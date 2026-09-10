@@ -21,6 +21,15 @@
   "entity": {
     "light": {
       "brightness": { "name": "Brightness" }
+    },
+    "number": {
+      "volume": { "name": "Volume" }
+    },
+    "select": {
+      "input_source": { "name": "Input source" }
+    },
+    "switch": {
+      "mute": { "name": "Mute" }
     }
   }
 }
