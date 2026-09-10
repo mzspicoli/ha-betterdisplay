@@ -30,7 +30,8 @@ class BetterDisplayCoordinator(DataUpdateCoordinator[dict[str, dict]]):
             for display in displays:
                 tag_id = display["tagID"]
                 brightness = await self.client.get_brightness(tag_id)
-                result[tag_id] = {**display, "brightness": brightness}
+                backlight = await self.client.get_backlight(tag_id)
+                result[tag_id] = {**display, "brightness": brightness, "backlight": backlight}
             return result
         except BetterDisplayError as err:
             raise UpdateFailed(str(err)) from err

@@ -50,16 +50,9 @@ class BetterDisplayClient:
         except json.JSONDecodeError as err:
             raise BetterDisplayError(f"unexpected identifiers payload: {raw!r}") from err
 
-    async def get_brightness(self, tag_id: str) -> float:
-        raw = await self._get_text(tagID=tag_id, brightness=None)
-        return float(raw)
-
-    async def set_brightness(self, tag_id: str, value: float) -> None:
-        value = max(0.0, min(1.0, value))
+    async def _set(self, **params) -> None:
         try:
-            async with self._session.get(
-                f"{self._base}/set", params=self._params(tagID=tag_id, brightness=value), timeout=TIMEOUT
-            ) as resp:
+            async with self._session.get(f"{self._base}/set", params=self._params(**params), timeout=TIMEOUT) as resp:
                 text = await resp.text()
                 if resp.status != 200:
                     raise BetterDisplayError(text.strip() or f"HTTP {resp.status}")
@@ -67,3 +60,20 @@ class BetterDisplayClient:
             raise
         except Exception as err:
             raise BetterDisplayError(str(err)) from err
+
+    async def get_brightness(self, tag_id: str) -> float:
+        raw = await self._get_text(tagID=tag_id, brightness=None)
+        return float(raw)
+
+    async def set_brightness(self, tag_id: str, value: float) -> None:
+        await self._set(tagID=tag_id, brightness=max(0.0, min(1.0, value)))
+
+    async def get_backlight(self, tag_id: str) -> bool | None:
+        """Hardware backlight state, or None if the display has no DDC/smart backlight control."""
+        raw = await self._get_text(tagID=tag_id, hardwareBacklight=None)
+        if raw not in ("on", "off"):
+            return None
+        return raw == "on"
+
+    async def set_backlight(self, tag_id: str, value: bool) -> None:
+        await self._set(tagID=tag_id, hardwareBacklight="on" if value else "off")

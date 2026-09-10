@@ -21,10 +21,16 @@ plain HTTP -- no MQTT broker needed at all.
 
 - `light.<display>` entity per connected display, brightness-only (`ColorMode.BRIGHTNESS`).
 - Config flow: host, port (default 55777), optional integration token.
-- `DataUpdateCoordinator` polls `GET /get?identifiers` (display list) and
-  `GET /get?tagID=<id>&brightness` every 10s.
-- `light.turn_on` (with `brightness` or `brightness_pct`) / `light.turn_off` call
+- `DataUpdateCoordinator` polls `GET /get?identifiers` (display list),
+  `GET /get?tagID=<id>&brightness` and `GET /get?tagID=<id>&hardwareBacklight`
+  every 10s.
+- `light.turn_on` (with `brightness` or `brightness_pct`) calls
   `GET /set?tagID=<id>&brightness=<0-1>`.
+- `light.turn_off` calls `GET /set?tagID=<id>&hardwareBacklight=off`, which cuts
+  the panel's backlight over DDC so the monitor actually powers down. Setting
+  brightness to 0 instead only renders a black screen on a still-lit display.
+  Displays that don't report a `hardwareBacklight` value (the API answers
+  `Failed.`) fall back to the old brightness-to-0 behaviour.
 
 ## Bugs found and fixed during testing against real hardware
 

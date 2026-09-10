@@ -42,7 +42,13 @@ class BetterDisplayBrightnessLight(CoordinatorEntity[BetterDisplayCoordinator], 
         )
 
     @property
+    def _has_backlight_control(self) -> bool:
+        return self._display["backlight"] is not None
+
+    @property
     def is_on(self) -> bool:
+        if self._has_backlight_control:
+            return self._display["backlight"]
         return self._display["brightness"] > 0
 
     @property
@@ -50,15 +56,29 @@ class BetterDisplayBrightnessLight(CoordinatorEntity[BetterDisplayCoordinator], 
         return round(self._display["brightness"] * 255)
 
     async def async_turn_on(self, **kwargs) -> None:
+        client = self.coordinator.client
+        if self._has_backlight_control and not self._display["backlight"]:
+            await client.set_backlight(self._tag_id, True)
+
         if ATTR_BRIGHTNESS in kwargs:
             pct = kwargs[ATTR_BRIGHTNESS] / 255
         elif ATTR_BRIGHTNESS_PCT in kwargs:
             pct = kwargs[ATTR_BRIGHTNESS_PCT] / 100
+        elif self._has_backlight_control:
+            # Backlight is back on and brightness was never zeroed -- keep the previous level.
+            pct = None
         else:
             pct = 1.0
-        await self.coordinator.client.set_brightness(self._tag_id, pct)
+
+        if pct is not None:
+            await client.set_brightness(self._tag_id, pct)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs) -> None:
-        await self.coordinator.client.set_brightness(self._tag_id, 0.0)
+        # Cut the backlight via DDC so the panel actually powers down; dropping brightness
+        # to 0 only paints the screen black while the display stays lit.
+        if self._has_backlight_control:
+            await self.coordinator.client.set_backlight(self._tag_id, False)
+        else:
+            await self.coordinator.client.set_brightness(self._tag_id, 0.0)
         await self.coordinator.async_request_refresh()
